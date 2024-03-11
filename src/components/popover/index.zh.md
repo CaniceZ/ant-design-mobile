@@ -22,7 +22,7 @@
 
 | 属性 | 说明 | 类型 | 默认值 |
 | --- | --- | --- | --- |
-| children | 触发 `popover` 的元素 | `React.ReactElement` | - |
+| children | 触发 `Popover` 的元素 | `React.ReactElement` | - |
 | content | 弹出内容 | `React.ReactNode` | - |
 | defaultVisible | 默认是否显隐 | `boolean` | `false` |
 | destroyOnHide | 隐藏时，是否销毁 `tooltip` 内容 | `boolean` | `false` |
@@ -68,6 +68,7 @@
 | 属性 | 说明 | 类型 | 默认值 |
 | --- | --- | --- | --- |
 | actions | 菜单列表，当弹出内容为标准菜单时使用 | `Action[]` | - |
+| maxCount | 菜单列表最大个数，超出则隐藏进行滚动 | `number` | - |
 | onAction | 当使用菜单列表时，选中菜单的回调 | `(item: Action) => void` | - |
 
 ### Action

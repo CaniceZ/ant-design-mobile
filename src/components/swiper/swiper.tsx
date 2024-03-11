@@ -1,14 +1,12 @@
 import React, {
   forwardRef,
-  ReactElement,
-  ReactNode,
   useEffect,
   useImperativeHandle,
   useMemo,
   useRef,
   useState,
-  CSSProperties,
 } from 'react'
+import type { ReactNode, CSSProperties, ReactElement } from 'react'
 import { NativeProps, withNativeProps } from '../../utils/native-props'
 import { mergeProps } from '../../utils/with-default-props'
 import classNames from 'classnames'
@@ -20,7 +18,7 @@ import PageIndicator, { PageIndicatorProps } from '../page-indicator'
 import { staged } from 'staged-components'
 import { useRefState } from '../../utils/use-ref-state'
 import { bound } from '../../utils/bound'
-import { useIsomorphicLayoutEffect, useUpdateEffect } from 'ahooks'
+import { useIsomorphicLayoutEffect, useGetState } from 'ahooks'
 import { mergeFuncProps } from '../../utils/with-func-props'
 
 const classPrefix = `adm-swiper`
@@ -52,13 +50,20 @@ export type SwiperProps = {
   direction?: 'horizontal' | 'vertical'
   onIndexChange?: (index: number) => void
   indicatorProps?: Pick<PageIndicatorProps, 'color' | 'style' | 'className'>
-  indicator?: (total: number, current: number) => ReactNode
+  indicator?: false | ((total: number, current: number) => ReactNode)
   slideSize?: number
   trackOffset?: number
   stuckAtBoundary?: boolean
   rubberband?: boolean
   stopPropagation?: PropagationEvent[]
-  children?: ReactElement | ReactElement[]
+  /**
+   * Virtual scroll usage. Should work with renderProps `children`
+   */
+  total?: number
+  /**
+   * renderProps is only work when `total` used
+   */
+  children?: ReactElement | ReactElement[] | ((index: number) => ReactElement)
 } & NativeProps<'--height' | '--width' | '--border-radius' | '--track-padding'>
 
 const defaultProps = {
@@ -80,40 +85,57 @@ let currentUid: undefined | {}
 export const Swiper = forwardRef<SwiperRef, SwiperProps>(
   staged<SwiperProps, SwiperRef>((p, ref) => {
     const props = mergeProps(defaultProps, p)
+
+    const { direction, total, children, indicator } = props
+
     const [uid] = useState({})
-    const isVertical = props.direction === 'vertical'
+    const timeoutRef = useRef<number | null>(null)
+    const isVertical = direction === 'vertical'
 
     const slideRatio = props.slideSize / 100
     const offsetRatio = props.trackOffset / 100
 
-    const { validChildren, count } = useMemo(() => {
+    const { validChildren, count, renderChildren } = useMemo(() => {
       let count = 0
-      const validChildren = React.Children.map(props.children, child => {
-        if (!React.isValidElement(child)) return null
-        if (child.type !== SwiperItem) {
-          devWarning(
-            'Swiper',
-            'The children of `Swiper` must be `Swiper.Item` components.'
-          )
-          return null
-        }
-        count++
-        return child
-      })
+
+      let renderChildren: ((index: number) => ReactElement) | undefined =
+        undefined
+      let validChildren: ReactElement[] | null | undefined = undefined
+
+      if (typeof children === 'function') {
+        renderChildren = children
+      } else {
+        validChildren = React.Children.map(children, child => {
+          if (!React.isValidElement(child)) return null
+          if (child.type !== SwiperItem) {
+            devWarning(
+              'Swiper',
+              'The children of `Swiper` must be `Swiper.Item` components.'
+            )
+            return null
+          }
+          count++
+          return child
+        })
+      }
+
       return {
+        renderChildren,
         validChildren,
         count,
       }
-    }, [props.children])
+    }, [children])
 
-    if (count === 0 || !validChildren) {
+    const mergedTotal = total ?? count
+
+    if (mergedTotal === 0 || (!validChildren && !renderChildren)) {
       devWarning('Swiper', '`Swiper` needs at least one child.')
       return null
     }
 
     return () => {
       let loop = props.loop
-      if (slideRatio * (count - 1) < 1) {
+      if (slideRatio * (mergedTotal - 1) < 1) {
         loop = false
       }
       const trackRef = useRef<HTMLDivElement>(null)
@@ -125,17 +147,13 @@ export const Swiper = forwardRef<SwiperRef, SwiperProps>(
         return (trackPixels * props.slideSize) / 100
       }
 
-      const [current, setCurrent] = useState(props.defaultIndex)
-
-      useUpdateEffect(() => {
-        props.onIndexChange?.(current)
-      }, [current])
+      const [current, setCurrent, getCurrent] = useGetState(props.defaultIndex)
 
       const [dragging, setDragging, draggingRef] = useRefState(false)
 
       function boundIndex(current: number) {
         let min = 0
-        let max = count - 1
+        let max = mergedTotal - 1
         if (props.stuckAtBoundary) {
           min += offsetRatio / slideRatio
           max -= (1 - slideRatio - offsetRatio) / slideRatio
@@ -151,7 +169,7 @@ export const Swiper = forwardRef<SwiperRef, SwiperProps>(
             if (draggingRef.current) return
             if (!loop) return
             const rawX = position.get()
-            const totalWidth = 100 * count
+            const totalWidth = 100 * mergedTotal
             const standardPosition = modulus(rawX, totalWidth)
             if (standardPosition === rawX) return
             api.start({
@@ -160,7 +178,7 @@ export const Swiper = forwardRef<SwiperRef, SwiperProps>(
             })
           },
         }),
-        [count]
+        [mergedTotal]
       )
 
       const dragCancelRef = useRef<(() => void) | null>(null)
@@ -216,7 +234,7 @@ export const Swiper = forwardRef<SwiperRef, SwiperProps>(
             if (loop) return {}
             const slidePixels = getSlidePixels()
             const lowerBound = boundIndex(0) * slidePixels
-            const upperBound = boundIndex(count - 1) * slidePixels
+            const upperBound = boundIndex(mergedTotal - 1) * slidePixels
             return isVertical
               ? {
                   top: lowerBound,
@@ -239,9 +257,15 @@ export const Swiper = forwardRef<SwiperRef, SwiperProps>(
       function swipeTo(index: number, immediate = false) {
         const roundedIndex = Math.round(index)
         const targetIndex = loop
-          ? modulus(roundedIndex, count)
-          : bound(roundedIndex, 0, count - 1)
+          ? modulus(roundedIndex, mergedTotal)
+          : bound(roundedIndex, 0, mergedTotal - 1)
+
+        if (targetIndex !== getCurrent()) {
+          props.onIndexChange?.(targetIndex)
+        }
+
         setCurrent(targetIndex)
+
         api.start({
           position: (loop ? roundedIndex : boundIndex(roundedIndex)) * 100,
           immediate,
@@ -263,55 +287,96 @@ export const Swiper = forwardRef<SwiperRef, SwiperProps>(
       }))
 
       useIsomorphicLayoutEffect(() => {
-        const maxIndex = validChildren.length - 1
+        const maxIndex = mergedTotal - 1
         if (current > maxIndex) {
           swipeTo(maxIndex, true)
         }
       })
 
       const { autoplay, autoplayInterval } = props
+
+      const runTimeSwiper = () => {
+        timeoutRef.current = window.setTimeout(() => {
+          swipeNext()
+          runTimeSwiper()
+        }, autoplayInterval)
+      }
       useEffect(() => {
         if (!autoplay || dragging) return
 
-        let interval: number
-        function tick() {
-          interval = window.setTimeout(tick, autoplayInterval)
-          swipeNext()
-        }
-
-        interval = window.setTimeout(tick, autoplayInterval)
+        runTimeSwiper()
 
         return () => {
-          if (interval) window.clearTimeout(interval)
+          if (timeoutRef.current) window.clearTimeout(timeoutRef.current)
         }
-      }, [autoplay, autoplayInterval, dragging, count])
+      }, [autoplay, autoplayInterval, dragging, mergedTotal])
 
+      // ============================== Render ==============================
+      // Render Item
+      function renderItem(index: number, child: React.ReactNode) {
+        let itemStyle: React.CSSProperties = {}
+
+        if (loop) {
+          itemStyle = {
+            [isVertical ? 'y' : 'x']: position.to(position => {
+              let finalPosition = -position + index * 100
+              const totalWidth = mergedTotal * 100
+              const flagWidth = totalWidth / 2
+              finalPosition =
+                modulus(finalPosition + flagWidth, totalWidth) - flagWidth
+              return `${finalPosition}%`
+            }),
+            [isVertical ? 'top' : 'left']: `-${index * 100}%`,
+          }
+        }
+
+        return (
+          <animated.div
+            className={classNames(`${classPrefix}-slide`, {
+              [`${classPrefix}-slide-active`]: current === index,
+            })}
+            style={itemStyle}
+            key={index}
+          >
+            {child}
+          </animated.div>
+        )
+      }
+
+      function renderItems() {
+        if (renderChildren && total) {
+          const offsetCount = 2
+          const startIndex = Math.max(current - offsetCount, 0)
+          const endIndex = Math.min(current + offsetCount, total - 1)
+
+          const items: ReactElement[] = []
+          for (let index = startIndex; index <= endIndex; index += 1) {
+            items.push(renderItem(index, renderChildren(index)))
+          }
+
+          return (
+            <>
+              <div
+                className={`${classPrefix}-slide-placeholder`}
+                style={{
+                  width: `${startIndex * 100}%`,
+                }}
+              />
+              {items}
+            </>
+          )
+        }
+
+        return React.Children.map(validChildren, (child, index) => {
+          return renderItem(index, child)
+        })
+      }
+
+      // Render Track Inner
       function renderTrackInner() {
         if (loop) {
           return (
-            <div className={`${classPrefix}-track-inner`}>
-              {React.Children.map(validChildren, (child, index) => {
-                return (
-                  <animated.div
-                    className={`${classPrefix}-slide`}
-                    style={{
-                      [isVertical ? 'y' : 'x']: position.to(position => {
-                        let finalPosition = -position + index * 100
-                        const totalWidth = count * 100
-                        const flagWidth = totalWidth / 2
-                        finalPosition =
-                          modulus(finalPosition + flagWidth, totalWidth) -
-                          flagWidth
-                        return `${finalPosition}%`
-                      }),
-                      [isVertical ? 'top' : 'left']: `-${index * 100}%`,
-                    }}
-                  >
-                    {child}
-                  </animated.div>
-                )
-              })}
-            </div>
+            <div className={`${classPrefix}-track-inner`}>{renderItems()}</div>
           )
         } else {
           return (
@@ -323,14 +388,13 @@ export const Swiper = forwardRef<SwiperRef, SwiperProps>(
                 ),
               }}
             >
-              {React.Children.map(validChildren, child => {
-                return <div className={`${classPrefix}-slide`}>{child}</div>
-              })}
+              {renderItems()}
             </animated.div>
           )
         }
       }
 
+      // Render
       const style: CSSProperties &
         Record<'--slide-size' | '--track-offset', string> = {
         '--slide-size': `${props.slideSize}%`,
@@ -350,13 +414,27 @@ export const Swiper = forwardRef<SwiperRef, SwiperProps>(
 
       const mergedProps = mergeFuncProps(dragProps, stopPropagationProps)
 
+      let indicatorNode: ReactNode = null
+
+      if (typeof indicator === 'function') {
+        indicatorNode = indicator(mergedTotal, current)
+      } else if (indicator !== false) {
+        indicatorNode = (
+          <div className={`${classPrefix}-indicator`}>
+            <PageIndicator
+              {...props.indicatorProps}
+              total={mergedTotal}
+              current={current}
+              direction={direction}
+            />
+          </div>
+        )
+      }
+
       return withNativeProps(
         props,
         <div
-          className={classNames(
-            classPrefix,
-            `${classPrefix}-${props.direction}`
-          )}
+          className={classNames(classPrefix, `${classPrefix}-${direction}`)}
           style={style}
         >
           <div
@@ -374,18 +452,8 @@ export const Swiper = forwardRef<SwiperRef, SwiperProps>(
           >
             {renderTrackInner()}
           </div>
-          {props.indicator === undefined ? (
-            <div className={`${classPrefix}-indicator`}>
-              <PageIndicator
-                {...props.indicatorProps}
-                total={count}
-                current={current}
-                direction={props.direction}
-              />
-            </div>
-          ) : (
-            props.indicator(count, current)
-          )}
+
+          {indicatorNode}
         </div>
       )
     }

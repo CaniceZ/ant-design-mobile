@@ -1,5 +1,6 @@
 import classNames from 'classnames'
-import React, { FC, useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
+import type { FC } from 'react'
 import { NativeProps, withNativeProps } from '../../utils/native-props'
 import { mergeProps } from '../../utils/with-default-props'
 
@@ -31,7 +32,7 @@ const defaultProps = {
 export const WaterMark: FC<WaterMarkProps> = p => {
   const props = mergeProps(defaultProps, p)
   const {
-    zIndex = 2000,
+    zIndex,
     gapX = 24,
     gapY = 48,
     width = 120,
@@ -131,7 +132,9 @@ export const WaterMark: FC<WaterMarkProps> = p => {
       style={{
         zIndex,
         backgroundSize: `${gapX + width}px`,
-        backgroundImage: `url('${base64Url}')`,
+
+        // Not give `url` if its empty. Which will cause 404 error.
+        backgroundImage: base64Url === '' ? undefined : `url('${base64Url}')`,
       }}
     />
   )

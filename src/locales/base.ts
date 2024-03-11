@@ -9,8 +9,13 @@ export const base = {
     close: 'Close',
   },
   Calendar: {
+    title: 'Date selection',
+    confirm: 'Confirm',
+    start: 'start',
+    end: 'end',
+    today: 'today',
     markItems: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-    renderYearAndMonth: (year: number, month: number) => `${year}/${month}`,
+    yearAndMonth: '${year}/${month}',
   },
   Cascader: {
     placeholder: 'Selecting',

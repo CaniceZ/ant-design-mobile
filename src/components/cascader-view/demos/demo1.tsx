@@ -5,7 +5,7 @@ import { DemoBlock } from 'demos'
 import { options, sameValueOptions } from '../../cascader/demos/data'
 
 export default () => {
-  const [value, setValue] = useState<string[]>([])
+  const [value, setValue] = useState<(string | number)[]>([])
 
   return (
     <>
@@ -35,6 +35,9 @@ export default () => {
             console.log(val, ext.items)
           }}
         />
+      </DemoBlock>
+      <DemoBlock title='开启骨架屏' padding='0'>
+        <CascaderView options={options} loading />
       </DemoBlock>
     </>
   )

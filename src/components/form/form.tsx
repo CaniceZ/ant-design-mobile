@@ -1,4 +1,5 @@
-import React, { ReactNode, forwardRef, ForwardedRef, useMemo } from 'react'
+import React, { forwardRef, useMemo } from 'react'
+import type { ReactNode, ForwardedRef } from 'react'
 import classNames from 'classnames'
 import { NativeProps } from '../../utils/native-props'
 import List, { ListProps } from '../list'
@@ -11,7 +12,7 @@ import { defaultFormContext, FormContext, FormContextType } from './context'
 import { mergeProps } from '../../utils/with-default-props'
 import { Header } from './header'
 import { useConfig } from '../config-provider'
-import merge from 'lodash/merge'
+import merge from 'deepmerge'
 import { FormArray } from './form-array'
 import { traverseReactNode } from '../../utils/traverse-react-node'
 
@@ -77,9 +78,8 @@ export const Form = forwardRef<FormInstance, FormProps>((p, ref) => {
   const validateMessages = useMemo(
     () =>
       merge(
-        {},
         locale.Form.defaultValidateMessages,
-        formProps.validateMessages
+        formProps.validateMessages || {}
       ),
     [locale.Form.defaultValidateMessages, formProps.validateMessages]
   )

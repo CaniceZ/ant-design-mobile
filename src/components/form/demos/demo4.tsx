@@ -1,10 +1,11 @@
-import React, { useState, FC } from 'react'
+import React, { useState } from 'react'
+import type { FC } from 'react'
 import { Form, Input, Button, Picker, Space } from 'antd-mobile'
 import type { PickerValue } from 'antd-mobile/es/components/picker'
 import { DownOutline } from 'antd-mobile-icons'
 
 interface MobileValue {
-  preValue: string
+  preValue: string | number
   realValue: string
 }
 

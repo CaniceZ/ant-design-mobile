@@ -1,4 +1,5 @@
-import React, { FC, ReactNode } from 'react'
+import React from 'react'
+import type { FC, ReactNode } from 'react'
 import { NativeProps, withNativeProps } from '../../utils/native-props'
 import List, { ListProps } from '../list'
 import { mergeProps } from '../../utils/with-default-props'
@@ -8,16 +9,18 @@ import { CheckOutline } from 'antd-mobile-icons'
 
 const classPrefix = 'adm-check-list'
 
+export type CheckListValue = string | number
+
 export type CheckListProps = Pick<ListProps, 'mode' | 'style'> & {
-  defaultValue?: string[]
-  value?: string[]
-  onChange?: (val: string[]) => void
+  defaultValue?: CheckListValue[]
+  value?: CheckListValue[]
+  onChange?: (val: CheckListValue[]) => void
   multiple?: boolean
   activeIcon?: ReactNode
   extra?: (active: boolean) => ReactNode
   disabled?: boolean
   readOnly?: boolean
-  children?: React.ReactNode
+  children?: ReactNode
 } & NativeProps
 
 const defaultProps = {
@@ -31,7 +34,7 @@ export const CheckList: FC<CheckListProps> = p => {
 
   const [value, setValue] = usePropsValue(props)
 
-  function check(val: string) {
+  function check(val: CheckListValue) {
     if (props.multiple) {
       setValue([...value, val])
     } else {
@@ -39,7 +42,7 @@ export const CheckList: FC<CheckListProps> = p => {
     }
   }
 
-  function uncheck(val: string) {
+  function uncheck(val: CheckListValue) {
     setValue(value.filter(item => item !== val))
   }
 

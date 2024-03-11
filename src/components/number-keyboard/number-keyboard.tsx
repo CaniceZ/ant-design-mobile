@@ -1,4 +1,5 @@
-import React, { useRef, useMemo, TouchEvent, MouseEvent } from 'react'
+import React, { useRef, useMemo } from 'react'
+import type { FC, TouchEvent, MouseEvent } from 'react'
 import classNames from 'classnames'
 import { DownOutline, TextDeletionOutline } from 'antd-mobile-icons'
 import { mergeProps } from '../../utils/with-default-props'
@@ -7,6 +8,7 @@ import Popup, { PopupProps } from '../popup'
 import { NativeProps, withNativeProps } from '../../utils/native-props'
 import SafeArea from '../safe-area'
 import { useMemoizedFn } from 'ahooks'
+import { useConfig } from '../config-provider'
 
 const classPrefix = 'adm-number-keyboard'
 
@@ -45,7 +47,7 @@ const defaultProps = {
   forceRender: false,
 }
 
-export const NumberKeyboard: React.FC<NumberKeyboardProps> = p => {
+export const NumberKeyboard: FC<NumberKeyboardProps> = p => {
   const props = mergeProps(defaultProps, p)
   const {
     visible,
@@ -57,6 +59,8 @@ export const NumberKeyboard: React.FC<NumberKeyboardProps> = p => {
     showCloseButton,
     onInput,
   } = props
+
+  const { locale } = useConfig()
 
   const keyboardRef = useRef<HTMLDivElement | null>(null)
 
@@ -126,7 +130,7 @@ export const NumberKeyboard: React.FC<NumberKeyboardProps> = p => {
           [`${classPrefix}-header-with-title`]: !!title,
         })}
       >
-        {'title' && (
+        {!!title && (
           <div className={`${classPrefix}-title`} aria-label={title}>
             {title}
           </div>
@@ -137,8 +141,8 @@ export const NumberKeyboard: React.FC<NumberKeyboardProps> = p => {
             onClick={() => {
               props.onClose?.()
             }}
-            role='grid'
-            title='CLOSE'
+            role='button'
+            title={locale.common.close}
             tabIndex={-1}
           >
             <DownOutline />
@@ -159,7 +163,7 @@ export const NumberKeyboard: React.FC<NumberKeyboardProps> = p => {
 
     const ariaProps = key
       ? {
-          role: 'grid',
+          role: 'button',
           title: key,
           tabIndex: -1,
         }
@@ -228,8 +232,12 @@ export const NumberKeyboard: React.FC<NumberKeyboardProps> = p => {
                     onKeyPress(e, 'BACKSPACE')
                     onBackspacePressEnd()
                   }}
-                  title='BACKSPACE'
-                  role='grid'
+                  onContextMenu={e => {
+                    // Long press should not trigger native context menu
+                    e.preventDefault()
+                  }}
+                  title={locale.Input.clear}
+                  role='button'
                   tabIndex={-1}
                 >
                   <TextDeletionOutline />
@@ -237,7 +245,7 @@ export const NumberKeyboard: React.FC<NumberKeyboardProps> = p => {
                 <div
                   className={`${classPrefix}-key ${classPrefix}-key-extra ${classPrefix}-key-ok`}
                   onTouchEnd={e => onKeyPress(e, 'OK')}
-                  role='grid'
+                  role='button'
                   tabIndex={-1}
                   aria-label={confirmText}
                 >

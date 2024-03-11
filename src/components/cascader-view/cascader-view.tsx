@@ -1,7 +1,8 @@
-import React, { FC, ReactNode, useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
+import type { FC, ReactNode } from 'react'
 import classNames from 'classnames'
 import Tabs from '../tabs'
-import CheckList from '../check-list'
+import CheckList, { CheckListValue } from '../check-list'
 import { NativeProps, withNativeProps } from '../../utils/native-props'
 import { mergeProps } from '../../utils/with-default-props'
 import { usePropsValue } from '../../utils/use-props-value'
@@ -10,17 +11,19 @@ import { useConfig } from '../config-provider'
 import { optionSkeleton } from './option-skeleton'
 import Skeleton from '../skeleton'
 import { useUpdateEffect } from 'ahooks'
+import { useFieldNames } from '../../hooks'
+import type { FieldNamesType, BaseOptionType } from '../../hooks'
 
 const classPrefix = `adm-cascader-view`
 
-export type CascaderValue = string
+export type CascaderValue = CheckListValue
 
 export type CascaderOption = {
-  label: string
-  value: string
+  label?: string
+  value?: string
   disabled?: boolean
   children?: CascaderOption[]
-}
+} & BaseOptionType
 
 export type CascaderValueExtend = {
   items: (CascaderOption | null)[]
@@ -35,6 +38,8 @@ export type CascaderViewProps = {
   placeholder?: string | ((index: number) => string)
   onTabsChange?: (index: number) => void
   activeIcon?: ReactNode
+  loading?: boolean
+  fieldNames?: FieldNamesType
 } & NativeProps<'--height'>
 
 const defaultProps = {
@@ -42,40 +47,44 @@ const defaultProps = {
 }
 
 export const CascaderView: FC<CascaderViewProps> = p => {
-  const { locale } = useConfig()
   const props = mergeProps(defaultProps, p)
-  const placeholder = props.placeholder || locale.Cascader.placeholder
+
+  const { locale } = useConfig()
+  const [labelName, valueName, childrenName, disabledName] = useFieldNames(
+    props.fieldNames
+  )
+  const generateValueExtend = useCascaderValueExtend(props.options, {
+    valueName,
+    childrenName,
+  })
+
   const [value, setValue] = usePropsValue({
     ...props,
     onChange: val => {
       props.onChange?.(val, generateValueExtend(val))
     },
   })
-  const [tabActiveIndex, setTabActiveIndex] = useState<number>(0)
-  useUpdateEffect(() => {
-    props.onTabsChange?.(tabActiveIndex)
-  }, [tabActiveIndex])
-
-  const generateValueExtend = useCascaderValueExtend(props.options)
+  const [tabActiveIndex, setTabActiveIndex] = useState(0)
 
   const levels = useMemo(() => {
     const ret: {
       selected: CascaderOption | undefined
       options: CascaderOption[]
     }[] = []
+
     let currentOptions = props.options
     let reachedEnd = false
     for (const v of value) {
-      const target = currentOptions.find(option => option.value === v)
+      const target = currentOptions.find(option => option[valueName] === v)
       ret.push({
         selected: target,
         options: currentOptions,
       })
-      if (!target || !target.children) {
+      if (!target || !target[childrenName]) {
         reachedEnd = true
         break
       }
-      currentOptions = target.children
+      currentOptions = target[childrenName]
     }
     if (!reachedEnd) {
       ret.push({
@@ -86,6 +95,9 @@ export const CascaderView: FC<CascaderViewProps> = p => {
     return ret
   }, [value, props.options])
 
+  useUpdateEffect(() => {
+    props.onTabsChange?.(tabActiveIndex)
+  }, [tabActiveIndex])
   useEffect(() => {
     setTabActiveIndex(levels.length - 1)
   }, [value])
@@ -103,6 +115,11 @@ export const CascaderView: FC<CascaderViewProps> = p => {
     }
     setValue(next)
   }
+
+  const whetherLoading = <T extends unknown[]>(options: T) =>
+    props.loading || options === optionSkeleton
+
+  const placeholder = props.placeholder || locale.Cascader.placeholder
 
   return withNativeProps(
     props,
@@ -124,7 +141,7 @@ export const CascaderView: FC<CascaderViewProps> = p => {
               title={
                 <div className={`${classPrefix}-header-title`}>
                   {selected
-                    ? selected.label
+                    ? selected[labelName]
                     : typeof placeholder === 'function'
                     ? placeholder(index)
                     : placeholder}
@@ -133,7 +150,7 @@ export const CascaderView: FC<CascaderViewProps> = p => {
               forceRender
             >
               <div className={`${classPrefix}-content`}>
-                {level.options === optionSkeleton ? (
+                {whetherLoading(level.options) ? (
                   <div className={`${classPrefix}-skeleton`}>
                     <Skeleton
                       className={`${classPrefix}-skeleton-line-1`}
@@ -161,17 +178,17 @@ export const CascaderView: FC<CascaderViewProps> = p => {
                     activeIcon={props.activeIcon}
                   >
                     {level.options.map(option => {
-                      const active = value[index] === option.value
+                      const active = value[index] === option[valueName]
                       return (
                         <CheckList.Item
-                          value={option.value}
-                          key={option.value}
-                          disabled={option.disabled}
+                          value={option[valueName]}
+                          key={option[valueName]}
+                          disabled={option[disabledName]}
                           className={classNames(`${classPrefix}-item`, {
                             [`${classPrefix}-item-active`]: active,
                           })}
                         >
-                          {option.label}
+                          {option[labelName]}
                         </CheckList.Item>
                       )
                     })}

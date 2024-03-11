@@ -1,5 +1,6 @@
 import { mergeProps } from '../../utils/with-default-props'
-import React, { FC, useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
+import type { FC, ReactNode } from 'react'
 import { useLockFn, useThrottleFn } from 'ahooks'
 import { NativeProps, withNativeProps } from '../../utils/native-props'
 import { getScrollParent } from '../../utils/get-scroll-parent'
@@ -17,12 +18,8 @@ export type InfiniteScrollProps = {
   hasMore: boolean
   threshold?: number
   children?:
-    | React.ReactNode
-    | ((
-        hasMore: boolean,
-        failed: boolean,
-        retry: () => void
-      ) => React.ReactNode)
+    | ReactNode
+    | ((hasMore: boolean, failed: boolean, retry: () => void) => ReactNode)
 } & NativeProps
 
 const defaultProps: Required<
@@ -75,8 +72,10 @@ export const InfiniteScroll: FC<InfiniteScrollProps> = p => {
       if (current >= elementTop - props.threshold) {
         const nextFlag = {}
         nextFlagRef.current = nextFlag
-        await doLoadMore(false)
-        setFlag(nextFlag)
+        try {
+          await doLoadMore(false)
+          setFlag(nextFlag)
+        } catch (e) {}
       }
     },
     {
@@ -106,8 +105,10 @@ export const InfiniteScroll: FC<InfiniteScrollProps> = p => {
 
   async function retry() {
     setFailed(false)
-    await doLoadMore(true)
-    setFlag(nextFlagRef.current)
+    try {
+      await doLoadMore(true)
+      setFlag(nextFlagRef.current)
+    } catch (e) {}
   }
 
   return withNativeProps(

@@ -3,12 +3,14 @@ import { render } from 'testing'
 import MockDate from 'mockdate'
 import ConfigProvider from '..'
 import Calendar from '../../calendar'
+import CalendarPickerView from '../../calendar-picker-view'
 import Cascader from '../../cascader'
 import ErrorBlock from '../../error-block'
 import Form from '../../form'
 import Picker from '../../picker'
 import SearchBar from '../../search-bar'
 import ImageUploader from '../../image-uploader'
+import { useConfig } from '../'
 
 import zhCN from '../../../locales/zh-CN'
 import zhTW from '../../../locales/zh-TW'
@@ -25,6 +27,10 @@ import itIT from '../../../locales/it-IT'
 import daDK from '../../../locales/da-DK'
 import nbNO from '../../../locales/nb-NO'
 import nlNL from '../../../locales/nl-NL'
+import ruRU from '../../../locales/ru-RU'
+import trTR from '../../../locales/tr-TR'
+import thTH from '../../../locales/th-TH'
+import huHU from '../../../locales/hu-HU'
 
 const locales = [
   zhCN,
@@ -36,12 +42,16 @@ const locales = [
   koKR,
   jaJP,
   frFR,
+  huHU,
   kkKZ,
   idID,
   itIT,
   daDK,
   nbNO,
   nlNL,
+  ruRU,
+  trTR,
+  thTH,
 ]
 
 describe('ConfigProvider', () => {
@@ -58,6 +68,7 @@ describe('ConfigProvider', () => {
   const App = () => (
     <>
       <Calendar selectionMode='single' />
+      <CalendarPickerView selectionMode='single' />
       <Cascader options={[]} visible />
       <ErrorBlock />
       <Form requiredMarkStyle='text-required'>
@@ -87,5 +98,17 @@ describe('ConfigProvider', () => {
 
       expect(container).toMatchSnapshot()
     })
+  })
+
+  test('useConfig should only has `locale`', () => {
+    let config: ReturnType<typeof useConfig>
+
+    const Demo = () => {
+      config = useConfig()
+      return null
+    }
+    render(<Demo />)
+
+    expect(Object.keys(config!)).toEqual(['locale'])
   })
 })

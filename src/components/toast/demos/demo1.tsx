@@ -1,4 +1,5 @@
-import React, { FC, useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
+import type { FC } from 'react'
 import { Button, Space, Toast } from 'antd-mobile'
 import { DemoBlock } from 'demos'
 import { UploadOutline } from 'antd-mobile-icons'
@@ -13,7 +14,7 @@ export default () => {
         <Button
           onClick={() =>
             Toast.show({
-              content: 'Hello World',
+              content: 'Hello World, This is a long text',
               afterClose: () => {
                 console.log('after')
               },

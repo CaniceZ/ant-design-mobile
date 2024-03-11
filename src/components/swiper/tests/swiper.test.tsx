@@ -184,6 +184,31 @@ describe('Swiper', () => {
     expect(onIndexChange).toBeCalledWith(2)
   })
 
+  test('`onIndexChange` should not be called when use `swipeTo` equal value', () => {
+    const onIndexChange = jest.fn()
+    const App = () => {
+      const ref = useRef<SwiperRef>(null)
+      return (
+        <>
+          <Swiper defaultIndex={0} ref={ref} onIndexChange={onIndexChange}>
+            {items}
+          </Swiper>
+          <button
+            onClick={() => {
+              ref.current?.swipeTo(0)
+            }}
+          >
+            to
+          </button>
+        </>
+      )
+    }
+    const { getByText } = render(<App />)
+
+    fireEvent.click(getByText('to'))
+    expect(onIndexChange).not.toBeCalled()
+  })
+
   test(`dont't allow touch move`, () => {
     render(<Swiper allowTouchMove={false}>{items}</Swiper>)
 
@@ -212,17 +237,21 @@ describe('Swiper', () => {
     )
 
     const el = $$(`.${classPrefix}-track`)[0]
-    mockDrag(el, [
-      { clientX: 50, clientY: 300 },
-      {
-        clientX: 50,
-        clientY: 200,
-      },
-      {
-        clientX: 60,
-        clientY: 50,
-      },
-    ])
+    await mockDrag(
+      el,
+      [
+        { clientX: 50, clientY: 300 },
+        {
+          clientX: 50,
+          clientY: 200,
+        },
+        {
+          clientX: 60,
+          clientY: 50,
+        },
+      ],
+      5
+    )
 
     expect($$(`.${classPrefix}-track-inner`)[0]).toHaveStyle(
       'transform: translate3d(0,-100%,0)'
@@ -323,5 +352,15 @@ describe('Swiper', () => {
     expect(onMouseDown).not.toBeCalled()
     expect(onMouseMove).not.toBeCalled()
     expect(onMouseUp).not.toBeCalled()
+  })
+
+  test('virtual scroll', async () => {
+    const { container } = render(
+      <Swiper defaultIndex={10} total={10}>
+        {index => <Swiper.Item key={index}>{index}</Swiper.Item>}
+      </Swiper>
+    )
+
+    expect(container).toMatchSnapshot()
   })
 })

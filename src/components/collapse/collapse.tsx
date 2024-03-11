@@ -1,4 +1,5 @@
-import React, { FC, ReactElement, ComponentProps, useRef } from 'react'
+import React, { isValidElement, useRef } from 'react'
+import type { FC, ReactNode, ReactElement } from 'react'
 import { NativeProps, withNativeProps } from '../../utils/native-props'
 import List from '../list'
 import { DownOutline } from 'antd-mobile-icons'
@@ -14,13 +15,13 @@ const classPrefix = `adm-collapse`
 
 export type CollapsePanelProps = {
   key: string
-  title: React.ReactNode
+  title: ReactNode
   disabled?: boolean
   forceRender?: boolean
   destroyOnClose?: boolean
   onClick?: (event: React.MouseEvent<Element, MouseEvent>) => void
-  arrow?: React.ReactNode | ((active: boolean) => React.ReactNode)
-  children?: React.ReactNode
+  arrow?: ReactNode | ((active: boolean) => ReactNode)
+  children?: ReactNode
 } & NativeProps
 
 export const CollapsePanel: FC<CollapsePanelProps> = () => {
@@ -31,7 +32,7 @@ const CollapsePanelContent: FC<{
   visible: boolean
   forceRender: boolean
   destroyOnClose: boolean
-  children?: React.ReactNode
+  children?: ReactNode
 }> = props => {
   const { visible } = props
   const innerRef = useRef<HTMLDivElement>(null)
@@ -81,7 +82,9 @@ const CollapsePanelContent: FC<{
 
   return (
     <animated.div
-      className={`${classPrefix}-panel-content`}
+      className={classNames(`${classPrefix}-panel-content`, {
+        [`${classPrefix}-panel-content-active`]: visible,
+      })}
       style={{
         height: height.to(v => {
           if (height.idle && visible) {
@@ -103,7 +106,7 @@ type ValueProps<T> = {
   activeKey?: T
   defaultActiveKey?: T
   onChange?: (activeKey: T) => void
-  arrow?: React.ReactNode | ((active: boolean) => React.ReactNode)
+  arrow?: ReactNode | ((active: boolean) => ReactNode)
 }
 
 export type CollapseProps = (
@@ -114,42 +117,57 @@ export type CollapseProps = (
       accordion: true
     } & ValueProps<string | null>)
 ) & {
-  children?: React.ReactNode
+  children?: ReactNode
 } & NativeProps
 
 export const Collapse: FC<CollapseProps> = props => {
-  const panels: ReactElement<ComponentProps<typeof CollapsePanel>>[] = []
+  const panels: ReactElement<CollapsePanelProps>[] = []
   traverseReactNode(props.children, child => {
-    if (!React.isValidElement(child)) return
+    if (!isValidElement<CollapsePanelProps>(child)) return
     const key = child.key
     if (typeof key !== 'string') return
+
     panels.push(child)
   })
 
-  const [activeKey, setActiveKey] = usePropsValue<string[]>(
-    props.accordion
-      ? {
-          value:
-            props.activeKey === undefined
-              ? undefined
-              : props.activeKey === null
-              ? []
-              : [props.activeKey],
-          defaultValue:
-            props.defaultActiveKey === undefined ||
-            props.defaultActiveKey === null
-              ? []
-              : [props.defaultActiveKey],
-          onChange: v => {
-            props.onChange?.(v[0] ?? null)
-          },
-        }
-      : {
-          value: props.activeKey,
-          defaultValue: props.defaultActiveKey ?? [],
-          onChange: props.onChange,
-        }
-  )
+  const handlePropsValue = () => {
+    if (!props.accordion) {
+      return {
+        value: props.activeKey,
+        defaultValue: props.defaultActiveKey ?? [],
+        onChange: props.onChange,
+      }
+    }
+
+    const initValue: {
+      value?: string[]
+      defaultValue: string[]
+      onChange: (v: string[]) => void
+    } = {
+      value: [],
+      defaultValue: [],
+      onChange: v => {
+        props.onChange?.(v[0] ?? null)
+      },
+    }
+
+    if (props.activeKey === undefined) {
+      initValue.value = undefined
+    } else if (props.activeKey !== null) {
+      initValue.value = [props.activeKey]
+    }
+
+    if (
+      ![null, undefined].includes(props.defaultActiveKey as null | undefined)
+    ) {
+      initValue.defaultValue = [props.defaultActiveKey as string]
+    }
+
+    return initValue
+  }
+
+  const [activeKey, setActiveKey] = usePropsValue<string[]>(handlePropsValue())
+
   const activeKeyList =
     activeKey === null ? [] : Array.isArray(activeKey) ? activeKey : [activeKey]
 

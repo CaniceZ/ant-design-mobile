@@ -1,11 +1,11 @@
 import React, {
   forwardRef,
-  ReactNode,
   RefObject,
   useEffect,
   useImperativeHandle,
   useRef,
 } from 'react'
+import type { ReactNode } from 'react'
 import { mergeProps } from '../../utils/with-default-props'
 import { useSpring, animated } from '@react-spring/web'
 import { useDrag } from '@use-gesture/react'
@@ -19,9 +19,11 @@ import {
 
 const classPrefix = `adm-swipe-action`
 
+type SideType = 'left' | 'right'
+
 export type SwipeActionRef = {
   close: () => void
-  show: (side?: 'left' | 'right') => void
+  show: (side?: SideType) => void
 }
 
 type ActionColor =
@@ -47,7 +49,7 @@ export type SwipeActionProps = {
   closeOnAction?: boolean
   children: ReactNode
   stopPropagation?: PropagationEvent[]
-  onActionsReveal?: (side: 'left' | 'right') => void
+  onActionsReveal?: (side: SideType) => void
 } & NativeProps<'--background'>
 
 const defaultProps = {
@@ -141,7 +143,6 @@ export const SwipeAction = forwardRef<SwipeActionRef, SwipeActionProps>(
             right: leftWidth,
           }
         },
-        // rubberband: true,
         axis: 'x',
         preventScroll: true,
         pointer: { touch: true },
@@ -157,7 +158,7 @@ export const SwipeAction = forwardRef<SwipeActionRef, SwipeActionProps>(
     }
 
     useImperativeHandle(ref, () => ({
-      show: (side: 'left' | 'right' = 'right') => {
+      show: (side: SideType = 'right') => {
         if (side === 'right') {
           api.start({
             x: -getRightWidth(),

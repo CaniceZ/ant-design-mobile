@@ -6,7 +6,7 @@ import React, {
   useImperativeHandle,
 } from 'react'
 import { MinusOutline, AddOutline } from 'antd-mobile-icons'
-import useMergedState from 'rc-util/lib/hooks/useMergedState'
+import { useMergedState } from 'rc-util'
 import getMiniDecimal, {
   toFixed,
   type DecimalClass,
@@ -101,7 +101,6 @@ export function InnerStepper<ValueType extends number | string>(
     defaultValue = 0 as ValueType,
     value,
     onChange,
-
     disabled,
     step,
     max,
@@ -153,11 +152,7 @@ export function InnerStepper<ValueType extends number | string>(
   const formatValue = (value: ValueType | null): string => {
     if (value === null) return ''
 
-    if (formatter) {
-      return formatter(value)
-    } else {
-      return fixedValue(value)
-    }
+    return formatter ? formatter(value) : fixedValue(value)
   }
 
   // ======================== Value & InputValue ========================

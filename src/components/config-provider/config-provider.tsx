@@ -1,10 +1,10 @@
-import React, { FC, useContext } from 'react'
+import React, { useContext } from 'react'
+import type { FC, ReactNode } from 'react'
 import { Locale } from '../../locales/base'
 import zhCN from '../../locales/zh-CN'
 
 type Config = {
   locale: Locale
-  children?: React.ReactNode
 }
 
 export const defaultConfigRef: {
@@ -25,7 +25,9 @@ export function getDefaultConfig() {
 
 const ConfigContext = React.createContext<Config | null>(null)
 
-export type ConfigProviderProps = Config
+export type ConfigProviderProps = Config & {
+  children?: ReactNode
+}
 
 export const ConfigProvider: FC<ConfigProviderProps> = props => {
   const { children, ...config } = props

@@ -1,4 +1,5 @@
-import React, { FC, useMemo, useRef, useState } from 'react'
+import React, { useMemo, useRef, useState } from 'react'
+import type { FC, ReactNode } from 'react'
 import runes from 'runes2'
 import { mergeProps } from '../../utils/with-default-props'
 import { NativeProps, withNativeProps } from '../../utils/native-props'
@@ -15,8 +16,8 @@ export type EllipsisProps = {
   content: string
   direction?: 'start' | 'end' | 'middle'
   rows?: number
-  expandText?: string
-  collapseText?: string
+  expandText?: ReactNode
+  collapseText?: ReactNode
   stopPropagationForActionButtons?: PropagationEvent[]
   onContentClick?: (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void
   defaultExpanded?: boolean
@@ -41,6 +42,8 @@ type EllipsisedValue = {
 export const Ellipsis: FC<EllipsisProps> = p => {
   const props = mergeProps(defaultProps, p)
   const rootRef = useRef<HTMLDivElement>(null)
+  const expandElRef = useRef<HTMLAnchorElement>(null)
+  const collapseElRef = useRef<HTMLAnchorElement>(null)
 
   const [ellipsised, setEllipsised] = useState<EllipsisedValue>({})
   const [expanded, setExpanded] = useState(props.defaultExpanded)
@@ -54,23 +57,24 @@ export const Ellipsis: FC<EllipsisProps> = p => {
   function calcEllipsised() {
     const root = rootRef.current
     if (!root) return
-    if (!root.offsetParent) return
+
+    const originDisplay = root.style.display
+    root.style.display = 'block'
 
     const originStyle = window.getComputedStyle(root)
     const container = document.createElement('div')
+
     const styleNames: string[] = Array.prototype.slice.apply(originStyle)
     styleNames.forEach(name => {
       container.style.setProperty(name, originStyle.getPropertyValue(name))
     })
-    container.style.position = 'fixed'
-    container.style.left = '999999px'
-    container.style.top = '999999px'
-    container.style.zIndex = '-1000'
+
+    root.style.display = originDisplay
+
     container.style.height = 'auto'
     container.style.minHeight = 'auto'
     container.style.maxHeight = 'auto'
     container.style.textOverflow = 'clip'
-    container.style.whiteSpace = 'normal'
     container.style.webkitLineClamp = 'unset'
     container.style.display = 'block'
 
@@ -89,7 +93,16 @@ export const Ellipsis: FC<EllipsisProps> = p => {
     } else {
       setExceeded(true)
       const end = props.content.length
-      const actionText = expanded ? props.collapseText : props.expandText
+
+      const collapseEl =
+        typeof props.collapseText === 'string'
+          ? props.collapseText
+          : collapseElRef.current?.innerHTML
+      const expandEl =
+        typeof props.expandText === 'string'
+          ? props.expandText
+          : expandElRef.current?.innerHTML
+      const actionText = expanded ? collapseEl : expandEl
 
       function check(left: number, right: number): EllipsisedValue {
         if (right - left <= 1) {
@@ -105,10 +118,11 @@ export const Ellipsis: FC<EllipsisProps> = p => {
         }
         const middle = Math.round((left + right) / 2)
         if (props.direction === 'end') {
-          container.innerText = getSubString(0, middle) + '...' + actionText
+          container.innerHTML = getSubString(0, middle) + '...' + actionText
         } else {
-          container.innerText = actionText + '...' + getSubString(middle, end)
+          container.innerHTML = actionText + '...' + getSubString(middle, end)
         }
+
         if (container.offsetHeight <= maxHeight) {
           if (props.direction === 'end') {
             return check(middle, right)
@@ -139,7 +153,7 @@ export const Ellipsis: FC<EllipsisProps> = p => {
         }
         const leftPartMiddle = Math.floor((leftPart[0] + leftPart[1]) / 2)
         const rightPartMiddle = Math.ceil((rightPart[0] + rightPart[1]) / 2)
-        container.innerText =
+        container.innerHTML =
           getSubString(0, leftPartMiddle) +
           '...' +
           actionText +
@@ -180,53 +194,50 @@ export const Ellipsis: FC<EllipsisProps> = p => {
   ])
 
   const expandActionElement =
-    exceeded && props.expandText
-      ? withStopPropagation(
-          props.stopPropagationForActionButtons,
-          <a
-            onClick={() => {
-              setExpanded(true)
-            }}
-          >
-            {props.expandText}
-          </a>
-        )
-      : null
+    !!props.expandText &&
+    withStopPropagation(
+      props.stopPropagationForActionButtons,
+      <a
+        ref={expandElRef}
+        onClick={() => {
+          setExpanded(true)
+        }}
+      >
+        {props.expandText}
+      </a>
+    )
 
   const collapseActionElement =
-    exceeded && props.collapseText
-      ? withStopPropagation(
-          props.stopPropagationForActionButtons,
-          <a
-            onClick={() => {
-              setExpanded(false)
-            }}
-          >
-            {props.collapseText}
-          </a>
-        )
-      : null
+    !!props.collapseText &&
+    withStopPropagation(
+      props.stopPropagationForActionButtons,
+      <a
+        ref={collapseElRef}
+        onClick={() => {
+          setExpanded(false)
+        }}
+      >
+        {props.collapseText}
+      </a>
+    )
 
   const renderContent = () => {
-    if (!exceeded) {
-      return props.content
-    }
-    if (expanded) {
+    if (!exceeded) return props.content
+
+    if (expanded)
       return (
         <>
           {props.content}
           {collapseActionElement}
         </>
       )
-    } else {
-      return (
-        <>
-          {ellipsised.leading}
-          {expandActionElement}
-          {ellipsised.tailing}
-        </>
-      )
-    }
+    return (
+      <>
+        {ellipsised.leading}
+        {expandActionElement}
+        {ellipsised.tailing}
+      </>
+    )
   }
 
   return withNativeProps(

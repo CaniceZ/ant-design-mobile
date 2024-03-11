@@ -1,12 +1,11 @@
 import React, {
-  FC,
   forwardRef,
   useImperativeHandle,
   useRef,
   useState,
   useCallback,
 } from 'react'
-
+import type { FC, ReactNode } from 'react'
 import { mergeProps } from '../../utils/with-default-props'
 import {
   GetContainer,
@@ -16,6 +15,7 @@ import Mask from '../mask'
 import SafeArea from '../safe-area'
 import { Slide } from './slide'
 import { Slides, SlidesRef } from './slides'
+import classNames from 'classnames'
 
 const classPrefix = `adm-image-viewer`
 
@@ -26,7 +26,11 @@ export type ImageViewerProps = {
   visible?: boolean
   onClose?: () => void
   afterClose?: () => void
-  renderFooter?: (image: string) => React.ReactNode
+  renderFooter?: (image: string) => ReactNode
+  classNames?: {
+    mask?: string
+    body?: string
+  }
 }
 
 const defaultProps = {
@@ -45,14 +49,18 @@ export const ImageViewer: FC<ImageViewerProps> = p => {
       opacity='thick'
       afterClose={props.afterClose}
       destroyOnClose
+      className={props?.classNames?.mask}
     >
-      <div className={`${classPrefix}-content`}>
+      <div
+        className={classNames(
+          `${classPrefix}-content`,
+          props?.classNames?.body
+        )}
+      >
         {props.image && (
           <Slide
             image={props.image}
-            onTap={() => {
-              props.onClose?.()
-            }}
+            onTap={props.onClose}
             maxZoom={props.maxZoom}
           />
         )}
@@ -77,13 +85,14 @@ export type MultiImageViewerProps = Omit<
   images?: string[]
   defaultIndex?: number
   onIndexChange?: (index: number) => void
-  renderFooter?: (image: string, index: number) => React.ReactNode
+  renderFooter?: (image: string, index: number) => ReactNode
 }
 
 const multiDefaultProps = {
   ...defaultProps,
   defaultIndex: 0,
 }
+
 export const MultiImageViewer = forwardRef<
   MultiImageViewerRef,
   MultiImageViewerProps
@@ -100,11 +109,12 @@ export const MultiImageViewer = forwardRef<
   }))
 
   const onSlideChange = useCallback(
-    (index: number) => {
-      setIndex(index)
-      props.onIndexChange?.(index)
+    (newIndex: number) => {
+      if (newIndex === index) return
+      setIndex(newIndex)
+      props.onIndexChange?.(newIndex)
     },
-    [props.onIndexChange]
+    [props.onIndexChange, index]
   )
 
   const node = (
@@ -114,17 +124,21 @@ export const MultiImageViewer = forwardRef<
       opacity='thick'
       afterClose={props.afterClose}
       destroyOnClose
+      className={props?.classNames?.mask}
     >
-      <div className={`${classPrefix}-content`}>
+      <div
+        className={classNames(
+          `${classPrefix}-content`,
+          props?.classNames?.body
+        )}
+      >
         {props.images && (
           <Slides
             ref={slidesRef}
             defaultIndex={index}
             onIndexChange={onSlideChange}
             images={props.images}
-            onTap={() => {
-              props.onClose?.()
-            }}
+            onTap={props.onClose}
             maxZoom={props.maxZoom}
           />
         )}

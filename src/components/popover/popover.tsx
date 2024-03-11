@@ -1,11 +1,11 @@
 import React, {
   forwardRef,
   useImperativeHandle,
-  ReactElement,
   useRef,
   useState,
   useEffect,
 } from 'react'
+import type { ReactNode, ReactElement } from 'react'
 import classNames from 'classnames'
 import { usePropsValue } from '../../utils/use-props-value'
 import { mergeProps } from '../../utils/with-default-props'
@@ -35,6 +35,7 @@ import { useClickAway, useIsomorphicLayoutEffect } from 'ahooks'
 import { DeprecatedPlacement, Placement } from './index'
 import { normalizePlacement } from './normalize-placement'
 import { convertPx } from '../../utils/convert-px'
+
 const classPrefix = `adm-popover`
 
 export type PopoverProps = {
@@ -48,7 +49,7 @@ export type PopoverProps = {
   trigger?: 'click'
   placement?: Placement | DeprecatedPlacement
   stopPropagation?: PropagationEvent[]
-  content: React.ReactNode
+  content: ReactNode
 } & NativeProps<'--z-index' | '--arrow-size'>
 
 export type PopoverRef = {
@@ -62,11 +63,11 @@ const defaultProps = {
   defaultVisible: false,
   stopPropagation: ['click'],
   getContainer: () => document.body,
+  mode: 'light',
 }
 
 export const Popover = forwardRef<PopoverRef, PopoverProps>((p, ref) => {
   const props = mergeProps(defaultProps, p)
-  const { mode = 'light' } = props
   const placement = normalizePlacement(props.placement)
 
   const [visible, setVisible] = usePropsValue<boolean>({
@@ -77,13 +78,11 @@ export const Popover = forwardRef<PopoverRef, PopoverProps>((p, ref) => {
 
   useImperativeHandle(
     ref,
-    () => {
-      return {
-        show: () => setVisible(true),
-        hide: () => setVisible(false),
-        visible,
-      }
-    },
+    () => ({
+      show: () => setVisible(true),
+      hide: () => setVisible(false),
+      visible,
+    }),
     [visible]
   )
 
@@ -96,11 +95,9 @@ export const Popover = forwardRef<PopoverRef, PopoverProps>((p, ref) => {
     withNativeProps(
       props,
       <div
-        className={classNames(
-          classPrefix,
-          `${classPrefix}-${mode}`,
-          !visible && `${classPrefix}-hidden`
-        )}
+        className={classNames(classPrefix, `${classPrefix}-${props.mode}`, {
+          [`${classPrefix}-hidden`]: !visible,
+        })}
         ref={floatingRef}
       >
         <div className={`${classPrefix}-arrow`} ref={arrowRef}>

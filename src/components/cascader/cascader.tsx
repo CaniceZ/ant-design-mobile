@@ -17,6 +17,8 @@ import { usePropsValue } from '../../utils/use-props-value'
 import CascaderView from '../cascader-view'
 import { useConfig } from '../config-provider'
 import { useCascaderValueExtend } from '../cascader-view/use-cascader-value-extend'
+import { useFieldNames } from '../../hooks'
+import type { FieldNamesType } from '../../hooks'
 
 const classPrefix = `adm-cascader`
 
@@ -40,12 +42,14 @@ export type CascaderProps = {
   title?: ReactNode
   confirmText?: ReactNode
   cancelText?: ReactNode
+  loading?: boolean
   children?: (
     items: (CascaderOption | null)[],
     actions: CascaderActions
   ) => ReactNode
   onTabsChange?: (index: number) => void
   activeIcon?: ReactNode
+  fieldNames?: FieldNamesType
 } & Pick<
   PopupProps,
   | 'getContainer'
@@ -107,19 +111,19 @@ export const Cascader = forwardRef<CascaderRef, CascaderProps>((p, ref) => {
     },
   })
 
-  const generateValueExtend = useCascaderValueExtend(props.options)
+  const [, valueName, childrenName] = useFieldNames(props.fieldNames)
+  const generateValueExtend = useCascaderValueExtend(props.options, {
+    valueName,
+    childrenName,
+  })
 
   const [innerValue, setInnerValue] = useState<CascaderValue[]>(value)
+
   useEffect(() => {
     if (!visible) {
       setInnerValue(value)
     }
-  }, [visible])
-  useEffect(() => {
-    if (!visible) {
-      setInnerValue(value)
-    }
-  }, [value])
+  }, [visible, value])
 
   const cascaderElement = withNativeProps(
     props,

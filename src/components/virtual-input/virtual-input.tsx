@@ -1,11 +1,11 @@
 import React, {
   forwardRef,
-  ReactElement,
   useEffect,
   useImperativeHandle,
   useRef,
   useState,
 } from 'react'
+import type { ReactElement } from 'react'
 import type { InputProps } from '../input'
 import { NativeProps, withNativeProps } from '../../utils/native-props'
 import { mergeProps } from '../../utils/with-default-props'
@@ -107,7 +107,16 @@ export const VirtualInput = forwardRef<VirtualInputRef, VirtualInputProps>(
         },
         visible: hasFocus,
         onClose: () => {
-          rootRef.current?.blur()
+          const activeElement = document.activeElement as HTMLElement
+
+          // Long press makes `activeElement` to be the child of rootRef
+          // We will trigger blur on the child element instead
+          if (activeElement && rootRef.current?.contains(activeElement)) {
+            activeElement.blur()
+          } else {
+            rootRef.current?.blur()
+          }
+
           keyboard.props.onClose?.()
         },
         getContainer: null,
@@ -121,7 +130,7 @@ export const VirtualInput = forwardRef<VirtualInputRef, VirtualInputProps>(
           [`${classPrefix}-disabled`]: props.disabled,
         })}
         tabIndex={props.disabled ? undefined : 0}
-        role='option'
+        role='textbox'
         onFocus={onFocus}
         onBlur={onBlur}
         onClick={props.onClick}
@@ -151,7 +160,7 @@ export const VirtualInput = forwardRef<VirtualInputRef, VirtualInputProps>(
             <CloseCircleFill />
           </div>
         )}
-        {!value && (
+        {[undefined, null, ''].includes(value) && (
           <div className={`${classPrefix}-placeholder`}>
             {props.placeholder}
           </div>

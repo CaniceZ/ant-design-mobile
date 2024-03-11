@@ -1,10 +1,5 @@
-import React, {
-  useState,
-  useRef,
-  forwardRef,
-  useImperativeHandle,
-  ReactNode,
-} from 'react'
+import React, { useState, useRef, forwardRef, useImperativeHandle } from 'react'
+import type { ReactNode } from 'react'
 import classNames from 'classnames'
 import Input, { InputRef, InputProps } from '../input'
 import Button from '../button'
@@ -20,7 +15,7 @@ export type SearchBarRef = InputRef
 
 export type SearchBarProps = Pick<
   InputProps,
-  'onFocus' | 'onBlur' | 'onClear'
+  'onFocus' | 'onBlur' | 'onClear' | 'onCompositionStart' | 'onCompositionEnd'
 > & {
   value?: string
   defaultValue?: string
@@ -148,11 +143,13 @@ export const SearchBar = forwardRef<SearchBarRef, SearchBarProps>((p, ref) => {
             }
           }}
           aria-label={locale.SearchBar.name}
-          onCompositionStart={() => {
+          onCompositionStart={e => {
             composingRef.current = true
+            props.onCompositionStart?.(e)
           }}
-          onCompositionEnd={() => {
+          onCompositionEnd={e => {
             composingRef.current = false
+            props.onCompositionEnd?.(e)
           }}
         />
       </div>

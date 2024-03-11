@@ -16,7 +16,7 @@
   <span> · </span>
     <a href="https://discord.gg/jmNvw4WFYn">Discord</a>
   <span> · </span>
-    <a href="https://gw.alipayobjects.com/mdn/rms_25513e/afts/img/A*hBjlR4nUWjkAAAAAAAAAAAAAARQnAQ">钉钉</a>
+    <a href="https://mdn.alipayobjects.com/huamei_7uahnr/afts/img/A*8gmTR49Nr8UAAAAAAAAAAAAADrJ8AQ/original">钉钉</a>
   </h4>
 </div>
 
@@ -26,6 +26,8 @@ $ npm install --save antd-mobile
 $ yarn add antd-mobile
 # or
 $ pnpm add antd-mobile
+# or
+$ bun add antd-mobile
 ```
 
 - **Fast**: It is carefully optimized for harsh scenes, without configuration, you can have the best package size and ultimate performance.

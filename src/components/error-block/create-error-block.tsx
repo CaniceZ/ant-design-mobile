@@ -1,9 +1,11 @@
-import React, { FC, ReactElement, ReactNode } from 'react'
+import React from 'react'
+import type { FC, ReactNode, ReactElement } from 'react'
 import classNames from 'classnames'
 import { mergeProps } from '../../utils/with-default-props'
 import { NativeProps, withNativeProps } from '../../utils/native-props'
 import { useConfig } from '../config-provider'
 import type { ErrorBlockStatus, ImageRecord } from '.'
+import './error-block.less'
 
 const classPrefix = `adm-error-block`
 
@@ -13,7 +15,7 @@ export type ErrorBlockProps = {
   image?: string | ReactElement
   description?: ReactNode
   fullPage?: boolean
-  children?: React.ReactNode
+  children?: ReactNode
 } & NativeProps<
   | '--image-height'
   | '--image-height-full-page'
@@ -30,9 +32,10 @@ export function createErrorBlock(imageRecord: ImageRecord) {
     const props = mergeProps(defaultProps, p)
     const { locale } = useConfig()
     const contentPack = locale.ErrorBlock[props.status]
-    const des =
+    const desc =
       'description' in props ? props.description : contentPack.description
     const title = 'title' in props ? props.title : contentPack.title
+
     const image: ReactNode = props.image ?? imageRecord[props.status]
     const imageNode =
       typeof image === 'string' ? (
@@ -50,11 +53,12 @@ export function createErrorBlock(imageRecord: ImageRecord) {
       >
         <div className={`${classPrefix}-image`}>{imageNode}</div>
         <div className={`${classPrefix}-description`}>
-          {title && (
+          {![undefined, null].includes(title as null) && (
             <div className={`${classPrefix}-description-title`}>{title}</div>
           )}
-          {des && (
-            <div className={`${classPrefix}-description-subtitle`}>{des}</div>
+
+          {![undefined, null].includes(desc as null) && (
+            <div className={`${classPrefix}-description-subtitle`}>{desc}</div>
           )}
         </div>
 

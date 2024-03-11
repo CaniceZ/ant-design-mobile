@@ -1,10 +1,5 @@
-import React, {
-  FC,
-  ReactNode,
-  ReactElement,
-  ComponentProps,
-  useRef,
-} from 'react'
+import React, { isValidElement, useRef } from 'react'
+import type { FC, ReactNode, ReactElement } from 'react'
 import classNames from 'classnames'
 import { useSpring, animated } from '@react-spring/web'
 import { NativeProps, withNativeProps } from '../../utils/native-props'
@@ -38,7 +33,14 @@ export type TabsProps = {
   activeLineMode?: 'auto' | 'full' | 'fixed'
   stretch?: boolean
   onChange?: (key: string) => void
-  children?: React.ReactNode
+  children?: ReactNode
+  direction?: 'ltr' | 'rtl'
+  /**
+   * @experimental Support disabled auto scroll when Tabs header content change.
+   * This API name or function may change in the future.
+   * Please lock the version if you want to use it.
+   */
+  autoScroll?: boolean
 } & NativeProps<
   | '--fixed-active-line-width'
   | '--active-line-height'
@@ -52,6 +54,7 @@ export type TabsProps = {
 const defaultProps = {
   activeLineMode: 'auto',
   stretch: true,
+  direction: 'ltr',
 }
 
 export const Tabs: FC<TabsProps> = p => {
@@ -61,10 +64,13 @@ export const Tabs: FC<TabsProps> = p => {
   const keyToIndexRecord: Record<string, number> = {}
   let firstActiveKey: string | null = null
 
-  const panes: ReactElement<ComponentProps<typeof Tab>>[] = []
+  const panes: ReactElement<TabProps>[] = []
+
+  const isRTL = props.direction === 'rtl'
 
   traverseReactNode(props.children, (child, index) => {
-    if (!React.isValidElement(child)) return
+    if (!isValidElement<TabProps>(child)) return
+
     const key = child.key
     if (typeof key !== 'string') return
     if (index === 0) {
@@ -83,7 +89,7 @@ export const Tabs: FC<TabsProps> = p => {
     },
   })
 
-  const [{ x, width }, api] = useSpring(() => ({
+  const [{ x, width }, inkApi] = useSpring(() => ({
     x: 0,
     width: 0,
     config: {
@@ -108,12 +114,13 @@ export const Tabs: FC<TabsProps> = p => {
     },
   }))
 
-  function animate(immediate = false) {
+  function animate(immediate = false, fromMutation = false) {
     const container = tabListContainerRef.current
     if (!container) return
+
     const activeIndex = keyToIndexRecord[activeKey as string]
     if (activeIndex === undefined) {
-      api.start({
+      inkApi.start({
         x: 0,
         width: 0,
         immediate: true,
@@ -149,7 +156,19 @@ export const Tabs: FC<TabsProps> = p => {
     } else {
       x = activeTabLeft + (activeTabWidth - activeLineWidth) / 2
     }
-    api.start({
+
+    if (isRTL) {
+      /**
+       * In RTL mode, x equals the container width minus the x-coordinate of the current tab minus the width of the current tab.
+       * https://github.com/Fog3211/reproduce-codesandbox/blob/f0a3396a114cc00e88a51a67d3be60a746519b30/assets/images/antd_mobile_tabs_rtl_x.jpg?raw=true
+       */
+      const w = ['auto', 'full'].includes(props.activeLineMode)
+        ? width
+        : activeLineWidth
+      x = -(containerWidth - x - w)
+    }
+
+    inkApi.start({
       x,
       width,
       immediate,
@@ -158,17 +177,36 @@ export const Tabs: FC<TabsProps> = p => {
     const maxScrollDistance = containerScrollWidth - containerWidth
     if (maxScrollDistance <= 0) return
 
-    const nextScrollLeft = bound(
-      activeTabLeft - (containerWidth - activeTabWidth) / 2,
-      0,
-      containerScrollWidth - containerWidth
-    )
+    let nextScrollLeft = 0
 
-    scrollApi.start({
-      scrollLeft: nextScrollLeft,
-      from: { scrollLeft: containerScrollLeft },
-      immediate,
-    })
+    if (isRTL) {
+      /**
+       * 位移距离等于：activeTab的中心坐标距离容器中心坐标的距离，然后RTL取负数
+       * containerWidth / 2 - (activeTabLeft + (activeTabWidth - activeLineWidth) / 2) - activeLineWidth / 2,
+       */
+      nextScrollLeft = -bound(
+        containerWidth / 2 -
+          activeTabLeft +
+          activeTabWidth / 2 -
+          activeLineWidth,
+        0,
+        maxScrollDistance
+      )
+    } else {
+      nextScrollLeft = bound(
+        activeTabLeft - (containerWidth - activeTabWidth) / 2,
+        0,
+        maxScrollDistance
+      )
+    }
+
+    if (!fromMutation || props.autoScroll !== false) {
+      scrollApi.start({
+        scrollLeft: nextScrollLeft,
+        from: { scrollLeft: containerScrollLeft },
+        immediate,
+      })
+    }
   }
 
   useIsomorphicLayoutEffect(() => {
@@ -185,7 +223,7 @@ export const Tabs: FC<TabsProps> = p => {
 
   useMutationEffect(
     () => {
-      animate(!x.isAnimating)
+      animate(!x.isAnimating, true)
     },
     tabListContainerRef,
     {
@@ -201,9 +239,25 @@ export const Tabs: FC<TabsProps> = p => {
       if (!container) return
 
       const scrollLeft = container.scrollLeft
-      const showLeftMask = scrollLeft > 0
-      const showRightMask =
-        scrollLeft + container.offsetWidth < container.scrollWidth
+
+      let showLeftMask = false
+      let showRightMask = false
+
+      if (isRTL) {
+        /**
+         * RTL模式下，只要滑动过，scrollLeft就再也回不到0（chrome是0.5）
+         * 所以要加round才能终止触发条件
+         * round(443.5) + 375 < 819
+         */
+        showLeftMask =
+          Math.round(-scrollLeft) + container.offsetWidth <
+          container.scrollWidth
+        showRightMask = scrollLeft < 0
+      } else {
+        showLeftMask = scrollLeft > 0
+        showRightMask =
+          scrollLeft + container.offsetWidth < container.scrollWidth
+      }
 
       maskApi.start({
         leftMaskOpacity: showLeftMask ? 1 : 0,
@@ -224,7 +278,12 @@ export const Tabs: FC<TabsProps> = p => {
 
   return withNativeProps(
     props,
-    <div className={classPrefix}>
+    <div
+      className={classPrefix}
+      style={{
+        direction: props.direction,
+      }}
+    >
       <div className={`${classPrefix}-header`}>
         <animated.div
           className={classNames(

@@ -1,9 +1,11 @@
-import React, { FC, useContext } from 'react'
+import React, { useContext } from 'react'
+import type { FC } from 'react'
 import List, { ListItemProps } from '../list'
 import { NativeProps, withNativeProps } from '../../utils/native-props'
 import { CheckListContext } from './context'
 import { devWarning } from '../../utils/dev-log'
 import classNames from 'classnames'
+import { CheckListValue } from '.'
 
 const classPrefix = `adm-check-list-item`
 
@@ -17,7 +19,7 @@ export type CheckListItemProps = Pick<
   | 'onClick'
   | 'style'
 > & {
-  value: string
+  value: CheckListValue
   readOnly?: boolean
 } & NativeProps
 

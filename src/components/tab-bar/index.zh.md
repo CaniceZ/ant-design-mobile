@@ -19,7 +19,7 @@
 | 属性 | 说明 | 类型 | 默认值 |
 | --- | --- | --- | --- |
 | activeKey | 当前激活 `item` 的 `key` | `string \| null` | - |
-| defaultActiveKey | 初始化选中 `item` 的 `key`，如果没有设置 `activeKey` | `string \| null` | 第一个 `Tab` 的 `key` |
+| defaultActiveKey | 初始化选中 `item` 的 `key`，如果没有设置 `activeKey` | `string \| null` | 第一个 `TabBar.Item` 的 `key` |
 | onChange | 切换面板的回调 | `(key: string) => void` | - |
 | safeArea | 是否开启安全区适配 | `boolean` | `false` |
 
@@ -38,4 +38,4 @@
 
 ### TabBar 为什么不能固定在页面底部？
 
-不同业务项目中的布局逻辑是不一样的，TabBar 本身是不含定位和外层布局相关的逻辑的，需要业务项目中自己写 CSS 来控制。
+不同业务项目中的布局逻辑是不一样的，TabBar 本身是不含定位和外层布局相关的逻辑的，需要业务项目中配合 [Popup](/zh/components/popup) 实现，或者自行用 CSS 实现。

@@ -1,5 +1,6 @@
 import classNames from 'classnames'
-import React, { FC } from 'react'
+import React from 'react'
+import type { FC, ReactNode, CSSProperties } from 'react'
 import { NativeProps, withNativeProps } from '../../utils/native-props'
 
 const classPrefix = `adm-badge`
@@ -7,12 +8,12 @@ const classPrefix = `adm-badge`
 export const dot = <React.Fragment />
 
 export type BadgeProps = {
-  content?: React.ReactNode | typeof dot
+  content?: ReactNode | typeof dot
   color?: string
   bordered?: boolean
-  children?: React.ReactNode
+  children?: ReactNode
   wrapperClassName?: string
-  wrapperStyle?: React.CSSProperties
+  wrapperStyle?: CSSProperties
 } & NativeProps<'--right' | '--top' | '--color'>
 
 export const Badge: FC<BadgeProps> = props => {
@@ -20,19 +21,18 @@ export const Badge: FC<BadgeProps> = props => {
 
   const isDot = content === dot
 
-  const badgeCls = classNames(
-    classPrefix,
-    !!children && `${classPrefix}-fixed`,
-    isDot && `${classPrefix}-dot`,
-    props.bordered && `${classPrefix}-bordered`
-  )
+  const badgeClass = classNames(classPrefix, {
+    [`${classPrefix}-fixed`]: !!children,
+    [`${classPrefix}-dot`]: isDot,
+    [`${classPrefix}-bordered`]: props.bordered,
+  })
 
   const element =
     content || content === 0
       ? withNativeProps(
           props,
           <div
-            className={badgeCls}
+            className={badgeClass}
             style={
               {
                 '--color': color,
